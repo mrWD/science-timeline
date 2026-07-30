@@ -85,7 +85,11 @@ public sealed class StaticExport(string connectionString)
                    e.circa,
                    e.significance,
                    coalesce(e.wikipedia_en, e.wikipedia_ru, e.source_url) as url,
-                   e.image_url,
+                   -- Wikidata отдаёт ссылки на Викисклад по http, а сайт работает
+                   -- по https: браузер считает такую картинку смешанным содержимым
+                   -- и молча её не грузит. Без этой замены изображений нет ни у
+                   -- одного события.
+                   replace(e.image_url, 'http://', 'https://') as image_url,
                    coalesce((
                        select array_agg(c.slug order by c.slug)
                        from event_categories ec

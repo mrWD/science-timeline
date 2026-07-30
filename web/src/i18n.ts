@@ -51,6 +51,25 @@ export function roman(n: number): string {
   return out;
 }
 
+/**
+ * Согласование числительных.
+ *
+ * Форм в языках разное количество и правила у всех свои: английскому хватает
+ * двух, русскому нужно три («1 событие», «2 события», «5 событий»), арабскому
+ * шесть, китайскому и японскому ни одной. Правила знает Intl.PluralRules,
+ * а словари дают только сами формы — так одиннадцатый язык не потребует
+ * переписывать логику.
+ */
+const pluralCache = new Map<string, Intl.PluralRules>();
+
+export function plural(n: number, forms: Partial<Record<Intl.LDMLPluralRule, string>>): string {
+  let rules = pluralCache.get(current);
+  if (!rules) pluralCache.set(current, (rules = new Intl.PluralRules(current)));
+
+  const form = forms[rules.select(n)] ?? forms.other ?? '';
+  return form.replace('#', String(n));
+}
+
 function ordinalEn(n: number): string {
   const lastTwo = n % 100;
   if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
@@ -143,8 +162,8 @@ const en: Dict = {
   below: '↓ below',
   loading: 'loading…',
   apiUnavailable: 'API unavailable',
-  eventsInView: (n) => `${n} events in view`,
-  clusterTitle: (n) => `${n} events`,
+  eventsInView: (n) => plural(n, { one: '# event in view', other: '# events in view' }),
+  clusterTitle: (n) => plural(n, { one: '# event', other: '# events' }),
   clusterHint: 'click to zoom into this interval',
   clusterHintList: 'click to see the list',
   listShowing: (shown, total) => `showing ${shown} of ${total}`,
@@ -212,8 +231,12 @@ const ru: Dict = {
   below: '↓ снизу',
   loading: 'загрузка…',
   apiUnavailable: 'API недоступен',
-  eventsInView: (n) => `${n} событий в поле зрения`,
-  clusterTitle: (n) => `${n} событий`,
+  eventsInView: (n) => plural(n, {
+    one: '# событие в поле зрения',
+    few: '# события в поле зрения',
+    many: '# событий в поле зрения',
+  }),
+  clusterTitle: (n) => plural(n, { one: '# событие', few: '# события', many: '# событий' }),
   clusterHint: 'клик приближает этот интервал',
   clusterHintList: 'клик покажет список',
   listShowing: (shown, total) => `показано ${shown} из ${total}`,
@@ -282,8 +305,8 @@ const es: Dict = {
   below: '↓ abajo',
   loading: 'cargando…',
   apiUnavailable: 'API no disponible',
-  eventsInView: (n) => `${n} eventos a la vista`,
-  clusterTitle: (n) => `${n} eventos`,
+  eventsInView: (n) => plural(n, { one: '# evento a la vista', other: '# eventos a la vista' }),
+  clusterTitle: (n) => plural(n, { one: '# evento', other: '# eventos' }),
   clusterHint: 'haz clic para acercar este intervalo',
   clusterHintList: 'haz clic para ver la lista',
   listShowing: (shown, total) => `mostrando ${shown} de ${total}`,
@@ -352,8 +375,8 @@ const fr: Dict = {
   below: '↓ en dessous',
   loading: 'chargement…',
   apiUnavailable: 'API indisponible',
-  eventsInView: (n) => `${n} événements visibles`,
-  clusterTitle: (n) => `${n} événements`,
+  eventsInView: (n) => plural(n, { one: '# événement visible', other: '# événements visibles' }),
+  clusterTitle: (n) => plural(n, { one: '# événement', other: '# événements' }),
   clusterHint: 'cliquez pour zoomer sur cet intervalle',
   clusterHintList: 'cliquez pour voir la liste',
   listShowing: (shown, total) => `${shown} sur ${total} affichés`,
@@ -422,8 +445,8 @@ const de: Dict = {
   below: '↓ unten',
   loading: 'lädt…',
   apiUnavailable: 'API nicht erreichbar',
-  eventsInView: (n) => `${n} Ereignisse im Blick`,
-  clusterTitle: (n) => `${n} Ereignisse`,
+  eventsInView: (n) => plural(n, { one: '# Ereignis im Blick', other: '# Ereignisse im Blick' }),
+  clusterTitle: (n) => plural(n, { one: '# Ereignis', other: '# Ereignisse' }),
   clusterHint: 'Klick zoomt in diesen Zeitraum',
   clusterHintList: 'Klick zeigt die Liste',
   listShowing: (shown, total) => `${shown} von ${total} angezeigt`,
@@ -492,8 +515,8 @@ const pt: Dict = {
   below: '↓ abaixo',
   loading: 'a carregar…',
   apiUnavailable: 'API indisponível',
-  eventsInView: (n) => `${n} eventos à vista`,
-  clusterTitle: (n) => `${n} eventos`,
+  eventsInView: (n) => plural(n, { one: '# evento à vista', other: '# eventos à vista' }),
+  clusterTitle: (n) => plural(n, { one: '# evento', other: '# eventos' }),
   clusterHint: 'clique para aproximar este intervalo',
   clusterHintList: 'clique para ver a lista',
   listShowing: (shown, total) => `a mostrar ${shown} de ${total}`,
@@ -562,8 +585,8 @@ const zh: Dict = {
   below: '↓ 下方',
   loading: '加载中…',
   apiUnavailable: 'API 不可用',
-  eventsInView: (n) => `视野内有 ${n} 个事件`,
-  clusterTitle: (n) => `${n} 个事件`,
+  eventsInView: (n) => plural(n, { other: '视野内有 # 个事件' }),
+  clusterTitle: (n) => plural(n, { other: '# 个事件' }),
   clusterHint: '点击放大此区间',
   clusterHintList: '点击查看列表',
   listShowing: (shown, total) => `显示 ${shown} / ${total}`,
@@ -632,8 +655,8 @@ const ja: Dict = {
   below: '↓ 下',
   loading: '読み込み中…',
   apiUnavailable: 'API に接続できません',
-  eventsInView: (n) => `表示範囲に ${n} 件`,
-  clusterTitle: (n) => `${n} 件の出来事`,
+  eventsInView: (n) => plural(n, { other: '表示範囲に # 件' }),
+  clusterTitle: (n) => plural(n, { other: '# 件の出来事' }),
   clusterHint: 'クリックでこの期間を拡大',
   clusterHintList: 'クリックで一覧を表示',
   listShowing: (shown, total) => `${total} 件中 ${shown} 件を表示`,
@@ -702,8 +725,20 @@ const ar: Dict = {
   below: '↓ أسفل',
   loading: 'جارٍ التحميل…',
   apiUnavailable: 'الواجهة البرمجية غير متاحة',
-  eventsInView: (n) => `${n} حدثًا في النطاق`,
-  clusterTitle: (n) => `${n} حدثًا`,
+  eventsInView: (n) => plural(n, {
+    one: 'حدث واحد في النطاق',
+    two: 'حدثان في النطاق',
+    few: '# أحداث في النطاق',
+    many: '# حدثًا في النطاق',
+    other: '# حدث في النطاق',
+  }),
+  clusterTitle: (n) => plural(n, {
+    one: 'حدث واحد',
+    two: 'حدثان',
+    few: '# أحداث',
+    many: '# حدثًا',
+    other: '# حدث',
+  }),
   clusterHint: 'انقر لتكبير هذه الفترة',
   clusterHintList: 'انقر لعرض القائمة',
   listShowing: (shown, total) => `عرض ${shown} من ${total}`,
@@ -772,8 +807,8 @@ const hi: Dict = {
   below: '↓ नीचे',
   loading: 'लोड हो रहा है…',
   apiUnavailable: 'API उपलब्ध नहीं',
-  eventsInView: (n) => `दृश्य में ${n} घटनाएँ`,
-  clusterTitle: (n) => `${n} घटनाएँ`,
+  eventsInView: (n) => plural(n, { one: 'दृश्य में # घटना', other: 'दृश्य में # घटनाएँ' }),
+  clusterTitle: (n) => plural(n, { one: '# घटना', other: '# घटनाएँ' }),
   clusterHint: 'इस अवधि को बड़ा करने के लिए क्लिक करें',
   clusterHintList: 'सूची देखने के लिए क्लिक करें',
   listShowing: (shown, total) => `${total} में से ${shown} दिखाए गए`,

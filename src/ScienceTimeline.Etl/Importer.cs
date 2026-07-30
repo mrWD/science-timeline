@@ -405,7 +405,7 @@ public sealed class Importer(SparqlClient sparql, Database db)
                 string? id = row.EntityId("item");
                 if (id is null || !_events.TryGetValue(id, out var e)) continue;
 
-                e.ImageUrl    ??= row.Str("image");
+                e.ImageUrl    ??= Secure(row.Str("image"));
                 e.WikipediaRu ??= row.Str("articleRu");
                 e.WikipediaEn ??= row.Str("articleEn");
             }
@@ -629,6 +629,16 @@ public sealed class Importer(SparqlClient sparql, Database db)
             _events[id] = record;
         }
     }
+
+    /// <summary>
+    /// Wikidata отдаёт ссылки на Викисклад по http. Сайт работает по https,
+    /// и такая картинка становится смешанным содержимым — браузер молча
+    /// отказывается её грузить, оставляя пустой прямоугольник в карточке.
+    /// </summary>
+    private static string? Secure(string? url)
+        => url?.StartsWith("http://", StringComparison.OrdinalIgnoreCase) == true
+            ? string.Concat("https://", url.AsSpan("http://".Length))
+            : url;
 
     private static bool TryParseTime(Dictionary<string, SparqlValue> row, out ParsedTime time, out bool circa)
     {
