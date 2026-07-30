@@ -131,6 +131,7 @@ export class Timeline {
 
   private inFlight: AbortController | null = null;
   private fetchTimer: number | null = null;
+  private sizeTimer: number | null = null;
   private hovered: Marker | Bar | null = null;
 
   private colorByKind = false;
@@ -161,6 +162,12 @@ export class Timeline {
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
 
+    // Вкладка могла открыться в фоне: пока страница не отрисовывается,
+    // ResizeObserver молчит, и холст остаётся нулевого размера. Дожимаем
+    // сами — несколько попыток и возврат на вкладку.
+    this.ensureSized();
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+
     canvas.addEventListener('wheel', this.onWheel, { passive: false });
     canvas.addEventListener('pointerdown', this.onPointerDown);
     canvas.addEventListener('pointermove', this.onPointerMove);
@@ -173,8 +180,30 @@ export class Timeline {
 
   destroy(): void {
     this.resizeObserver.disconnect();
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.inFlight?.abort();
     if (this.fetchTimer !== null) window.clearTimeout(this.fetchTimer);
+    if (this.sizeTimer !== null) window.clearTimeout(this.sizeTimer);
+  }
+
+  private onVisibilityChange = (): void => {
+    if (!document.hidden) this.ensureSized();
+  };
+
+  /**
+   * Пробует получить размер холста, пока не получится.
+   *
+   * Разметка бывает готова не сразу — шрифты, соседние панели, а в фоновой
+   * вкладке цикл отрисовки вообще не крутится. Несколько попыток с растущей
+   * паузой обходятся дешевле, чем пустой экран у того, кто открыл ссылку
+   * в новой вкладке и переключился на неё через минуту.
+   */
+  private ensureSized(attempt = 0): void {
+    if (this.sizeTimer !== null) window.clearTimeout(this.sizeTimer);
+    this.render();
+
+    if (this.width > 0 || attempt >= 6) return;
+    this.sizeTimer = window.setTimeout(() => this.ensureSized(attempt + 1), 60 * (attempt + 1));
   }
 
   // ---------------------------------------------------------------
