@@ -18,6 +18,8 @@ using ScienceTimeline.Etl;
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 var options = new ImportOptions();
+string? exportDirectory = null;
+
 string connectionString =
     Environment.GetEnvironmentVariable("SCIENCE_TIMELINE_DB")
     ?? "Host=127.0.0.1;Port=5432;Database=science_timeline;Username=postgres;Password=postgres";
@@ -53,6 +55,9 @@ for (int i = 0; i < args.Length; i++)
         case "--fresh":
             options = options with { Fresh = true };
             break;
+        case "--export" when i + 1 < args.Length:
+            exportDirectory = args[++i];
+            break;
         case "--help" or "-h":
             Console.WriteLine("см. комментарий в начале Program.cs");
             return 0;
@@ -70,6 +75,14 @@ var db = new Database(connectionString);
 
 try
 {
+    // Выгрузка — отдельный режим, а не довесок к импорту: пересобрать
+    // статику из уже готовой базы нужно куда чаще, чем ходить в Wikidata.
+    if (exportDirectory is not null)
+    {
+        await new StaticExport(connectionString).RunAsync(exportDirectory, cts.Token);
+        return 0;
+    }
+
     await new Importer(sparql, db).RunAsync(options, cts.Token);
     return 0;
 }

@@ -560,6 +560,16 @@ body {
   background: var(--surface-2);
 }
 
+.card .c-credit {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card .c-tags {
   display: flex;
   flex-wrap: wrap;
@@ -592,4 +602,17 @@ body {
 .card .c-breakdown li {
   display: flex;
   justify-content: space-between;
+}
+
+.credits {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.credits a {
+  color: var(--text-dim);
+}
+
+.credits a:hover {
+  color: var(--accent);
 }

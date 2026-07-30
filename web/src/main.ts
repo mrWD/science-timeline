@@ -1,4 +1,4 @@
-import './style.css';
+﻿import './style.css';
 import {
   fetchEventList,
   fetchMeta,
@@ -6,7 +6,7 @@ import {
   type Meta,
   type TimelineBucket,
   type TimelineEvent,
-} from './api';
+} from './dataset';
 import {
   LANGUAGES,
   currentLanguage,
@@ -157,9 +157,30 @@ function renderEventCard(event: TimelineEvent): string {
     <h3>${escapeHtml(event.title)}</h3>
     <span class="c-date">${escapeHtml(date)}</span>
     ${event.summary ? `<p class="c-summary">${escapeHtml(event.summary)}</p>` : ''}
-    ${event.imageUrl ? `<img src="${escapeHtml(event.imageUrl)}" alt="" loading="lazy" />` : ''}
+    ${renderImage(event.imageUrl)}
     <div class="c-tags">${kindTag}${tags}</div>
     ${event.url ? `<span class="c-link">${escapeHtml(event.url.replace(/^https?:\/\//, ''))}</span>` : ''}
+  `;
+}
+
+/**
+ * Картинка с указанием источника.
+ *
+ * Изображения приходят с Викисклада, где значительная часть файлов под
+ * CC BY-SA — а она требует указания авторства. Имени автора в данных нет
+ * (это отдельный запрос на каждый файл), поэтому подписывается название
+ * файла и сам склад: по ним страница файла с полной лицензией находится
+ * однозначно. Так же поступает и сама Википедия.
+ */
+function renderImage(url: string | null): string {
+  if (!url) return '';
+
+  const file = decodeURIComponent(url.split('/').pop() ?? '').replace(/_/g, ' ');
+  const credit = file ? `${file} · Wikimedia Commons` : 'Wikimedia Commons';
+
+  return `
+    <img src="${escapeHtml(url)}" alt="" loading="lazy" />
+    <span class="c-credit">${escapeHtml(credit)}</span>
   `;
 }
 

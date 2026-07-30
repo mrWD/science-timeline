@@ -4,7 +4,7 @@
   type TimelineBucket,
   type TimelineEvent,
   type TimelineResponse,
-} from './api';
+} from './dataset';
 import { currentLanguage, formatRange, formatTick, t } from './i18n';
 import {
   PRECISION_RANK,

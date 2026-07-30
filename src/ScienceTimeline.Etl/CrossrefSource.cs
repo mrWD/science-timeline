@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -96,7 +96,7 @@ public sealed partial class CrossrefSource : IDisposable
         // тех, кто указал контакт в User-Agent.
         _http.DefaultRequestHeaders.Add(
             "User-Agent",
-            "science-timeline/0.1 (https://github.com/science-timeline; mailto:noreply@example.com)");
+            "science-timeline/0.1 (https://github.com/mrWD/science-timeline; mailto:lvigtor@gmail.com)");
     }
 
     public async Task<List<EventRecord>> FetchAsync(DateOnly since, int maxItems, CancellationToken ct)
@@ -117,7 +117,7 @@ public sealed partial class CrossrefSource : IDisposable
             string url = $"{Endpoint}?filter={string.Join(",", filters)}"
                        + $"&rows=1000&cursor={Uri.EscapeDataString(cursor)}"
                        + "&sort=published&order=desc"
-                       + "&select=DOI,title,abstract,published,issued,container-title,is-referenced-by-count,subject,author";
+                       + "&select=DOI,title,published,issued,container-title,is-referenced-by-count,subject,author";
 
             var message = await GetAsync(url, ct);
             if (message is null) break;
@@ -260,6 +260,15 @@ public sealed partial class CrossrefSource : IDisposable
     private static string CleanTitle(string title)
         => StripMarkup(title).Trim();
 
+    /// <summary>
+    /// Описание собирается только из журнала и авторов.
+    ///
+    /// Аннотации Crossref сюда сознательно не попадают. Библиографические
+    /// метаданные Crossref распространяет как CC0, но аннотации депонируют
+    /// издатели и права на них остаются у издателей — в отличие от заголовка
+    /// аннотация достаточно длинна и оригинальна, чтобы охраняться авторским
+    /// правом. Журнал, авторы и дата — факты, они не охраняются.
+    /// </summary>
     private static string Describe(CrossrefItem item, string journal)
     {
         var authors = (item.Author ?? [])
@@ -274,13 +283,7 @@ public sealed partial class CrossrefSource : IDisposable
             _ => string.Join(", ", authors) + ((item.Author?.Count ?? 0) > 3 ? " et al." : ""),
         };
 
-        // Аннотация бывает в несколько тысяч знаков — в карточке столько не нужно,
-        // да и лимит бесплатной базы в 0,5 ГБ не бесконечный.
-        string abstractText = item.Abstract is null ? "" : StripMarkup(item.Abstract);
-        if (abstractText.Length > 400) abstractText = abstractText[..400].TrimEnd() + "…";
-
-        var pieces = new[] { journal, people, abstractText }.Where(s => !string.IsNullOrWhiteSpace(s));
-        return string.Join(". ", pieces);
+        return string.Join(". ", new[] { journal, people }.Where(s => !string.IsNullOrWhiteSpace(s)));
     }
 
     [GeneratedRegex(@"<[^>]+>")]
@@ -312,7 +315,6 @@ public sealed class CrossrefItem
 {
     [JsonPropertyName("DOI")]                   public string? Doi { get; set; }
     [JsonPropertyName("title")]                 public List<string>? Title { get; set; }
-    [JsonPropertyName("abstract")]              public string? Abstract { get; set; }
     [JsonPropertyName("published")]             public CrossrefDate? Published { get; set; }
     [JsonPropertyName("issued")]                public CrossrefDate? Issued { get; set; }
     [JsonPropertyName("container-title")]       public List<string>? ContainerTitle { get; set; }

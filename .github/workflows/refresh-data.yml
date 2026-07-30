@@ -1,0 +1,74 @@
+name: Refresh data
+
+# Лента должна доходить до текущей недели, а Crossref пополняется каждый день.
+# Раз в неделю пересобираем данные заново и коммитим — коммит сам запускает
+# деплой. Wikidata меняется медленно, но её тоже проще перечитать целиком,
+# чем поддерживать инкрементальное обновление.
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: science_timeline
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    env:
+      SCIENCE_TIMELINE_DB: Host=127.0.0.1;Port=5432;Database=science_timeline;Username=postgres;Password=postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Apply schema
+        run: |
+          psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f db/schema.sql
+          psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f db/seed_categories.sql
+        env:
+          PGPASSWORD: postgres
+          PSQL_URL: postgresql://postgres@127.0.0.1:5432/science_timeline
+
+      - name: Import from Wikidata and Crossref
+        run: dotnet run --project src/ScienceTimeline.Etl -c Release -- --fresh
+
+      - name: Export static data
+        run: dotnet run --project src/ScienceTimeline.Etl -c Release -- --export web/public/data
+
+      - name: Run tests
+        run: dotnet test --nologo
+
+      - name: Commit if changed
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add web/public/data
+          # Экспорт всегда пишет generatedAt, поэтому meta.json меняется
+          # при каждом прогоне. Смотрим на сами события, а не на отметку времени.
+          if git diff --cached --quiet -- web/public/data/core.json 'web/public/data/text-*.json'; then
+            echo 'данные не изменились'
+            git reset
+          else
+            git commit -m 'Обновление данных из Wikidata и Crossref'
+            git push
+          fi
