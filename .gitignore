@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+*.user
+
+# Node
+node_modules/
+dist/
+
+# Локальные настройки
+.env
+*.local
+appsettings.Development.json
+.claude/settings.local.json
+
+# Редакторы
+.vs/
+.idea/
+.vscode/

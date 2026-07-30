@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ScienceTimeline.Api/ScienceTimeline.Api.csproj" />
+    <Project Path="src/ScienceTimeline.Core/ScienceTimeline.Core.csproj" />
+    <Project Path="src/ScienceTimeline.Etl/ScienceTimeline.Etl.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ScienceTimeline.Core.Tests/ScienceTimeline.Core.Tests.csproj" />
+  </Folder>
+</Solution>

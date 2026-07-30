@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Лента истории науки</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <h1 data-i18n="appTitle">Лента истории науки</h1>
+        </div>
+
+        <div class="range">
+          <span id="range-label">—</span>
+          <span id="range-count" class="dim"></span>
+        </div>
+
+        <div class="search">
+          <input id="search-input" type="search" placeholder="Найти открытие, изобретение, учёного…" autocomplete="off" />
+          <ul id="search-results" hidden></ul>
+        </div>
+
+        <div class="zoom">
+          <button id="zoom-out" data-i18n-title="zoomOut">−</button>
+          <button id="zoom-in" data-i18n-title="zoomIn">+</button>
+          <button id="go-today" data-i18n-title="goToday">◉</button>
+          <button id="zoom-reset" data-i18n-title="wholeHistory">⤢</button>
+        </div>
+
+        <select id="theme-select" class="select" data-i18n-title="theme">
+          <option value="auto" data-i18n="themeAuto">как в системе</option>
+          <option value="light" data-i18n="themeLight">светлая</option>
+          <option value="dark" data-i18n="themeDark">тёмная</option>
+        </select>
+
+        <select id="lang-select" class="select" data-i18n-title="language"></select>
+
+        <span id="status" class="status"></span>
+      </header>
+
+      <div class="body">
+        <aside class="panel">
+          <section>
+            <h2 data-i18n="fields">Области науки</h2>
+            <div id="category-filters" class="chips"></div>
+          </section>
+
+          <section>
+            <h2 data-i18n="kindsHeading">Типы событий</h2>
+            <div id="kind-filters" class="chips"></div>
+          </section>
+
+          <section>
+            <h2 data-i18n="layout">Раскладка</h2>
+            <label class="row">
+              <input id="color-by-kind" type="checkbox" />
+              <span data-i18n="colorByKind">Цвет по типу события</span>
+            </label>
+            <p class="hint" data-i18n="layoutHint">
+              Над линией — новое знание, под линией — изменения и применение.
+              Любой тип можно перекинуть на другую сторону.
+            </p>
+            <div id="side-controls" class="sides"></div>
+          </section>
+
+          <section class="legend">
+            <h2 data-i18n="help">Как пользоваться</h2>
+            <ul>
+              <li data-i18n="helpWheel">Колесо мыши — плавный зум от тысячелетий до суток</li>
+              <li data-i18n="helpDrag">Перетаскивание — движение по времени</li>
+              <li data-i18n="helpCluster">Круг с числом — кластер, клик приближает</li>
+              <li data-i18n="helpHover">Наведение — карточка события</li>
+            </ul>
+          </section>
+
+          <section class="support">
+            <h2 data-i18n="support">Поддержать</h2>
+            <p class="hint" data-i18n="supportHint">Если лента пригодилась — можно поддержать.</p>
+            <div class="support-links">
+              <a href="https://buymeacoffee.com/ipupok" target="_blank" rel="noopener">Buy Me a Coffee</a>
+              <a href="https://ko-fi.com/ipupok" target="_blank" rel="noopener">Ko-fi</a>
+              <a href="https://www.paypal.com/donate/?hosted_button_id=VBNDB5AHYLGCY" target="_blank" rel="noopener">PayPal</a>
+            </div>
+            <a class="source-link" href="https://github.com/mrWD/science-timeline" target="_blank" rel="noopener" data-i18n="sourceCode">Исходный код</a>
+          </section>
+        </aside>
+
+        <main class="stage">
+          <canvas id="timeline"></canvas>
+          <div id="card" class="card" hidden></div>
+
+          <aside id="event-list" class="event-list" hidden>
+            <header>
+              <div>
+                <h2 id="event-list-title"></h2>
+                <span id="event-list-date" class="dim"></span>
+              </div>
+              <button id="event-list-close" type="button" aria-label="close">×</button>
+            </header>
+            <ul id="event-list-items"></ul>
+            <button id="event-list-more" type="button" class="more" hidden></button>
+          </aside>
+        </main>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
