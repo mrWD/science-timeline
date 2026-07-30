@@ -35,7 +35,7 @@ const themeSelect = $<HTMLSelectElement>('theme-select');
 const langSelect = $<HTMLSelectElement>('lang-select');
 
 let timeline: Timeline;
-let meta: Meta;
+let meta: Meta | undefined;
 
 const activeCategories = new Set<string>();
 const activeKinds = new Set<string>();
@@ -91,6 +91,15 @@ function applyTranslations(): void {
 
   document.title = dict.appTitle;
   searchInput.placeholder = dict.searchPlaceholder;
+
+  // Дата сборки данных приходит из meta.json, поэтому её нельзя
+  // положить в разметку — только проставить после загрузки.
+  if (meta?.generatedAt) {
+    const date = new Date(meta.generatedAt);
+    $('built').textContent = dict.built(
+      new Intl.DateTimeFormat(currentLanguage(), { dateStyle: 'medium', timeZone: 'UTC' }).format(date),
+    );
+  }
 }
 
 function setupLanguage(): void {
@@ -125,7 +134,7 @@ function setupLanguage(): void {
 // ---------------------------------------------------------------------
 
 const categoryColor = (slug: string): string =>
-  meta.categories.find((c) => c.slug === slug)?.color ?? '#7A8794';
+  meta?.categories.find((c) => c.slug === slug)?.color ?? '#7A8794';
 
 const categoryName = (slug: string): string => t().categories[slug] ?? slug;
 
@@ -331,13 +340,13 @@ function positionCard(x: number, y: number): void {
  * в множествах вне DOM, поэтому пересборка их не сбрасывает.
  */
 function rebuildPanel(): void {
-  buildChips($<HTMLDivElement>('category-filters'), meta.categories.map((c) => c.slug), activeCategories, {
+  buildChips($<HTMLDivElement>('category-filters'), (meta?.categories ?? []).map((c) => c.slug), activeCategories, {
     label: categoryName,
     color: (slug) => categoryColor(slug),
     onChange: () => timeline.setCategoryFilter(new Set(activeCategories)),
   });
 
-  buildChips($<HTMLDivElement>('kind-filters'), meta.kinds, activeKinds, {
+  buildChips($<HTMLDivElement>('kind-filters'), meta?.kinds ?? [], activeKinds, {
     label: kindName,
     color: (kind) => KIND_COLORS[kind] ?? '#7A8794',
     onChange: () => timeline.setKindFilter(new Set(activeKinds)),
@@ -380,7 +389,7 @@ function buildSideControls(): void {
   const container = $<HTMLDivElement>('side-controls');
   container.replaceChildren();
 
-  for (const kind of meta.kinds) {
+  for (const kind of meta?.kinds ?? []) {
     const row = document.createElement('div');
     row.className = 'side-row';
 
@@ -525,6 +534,8 @@ async function main(): Promise<void> {
   $('event-list-close').addEventListener('click', closeList);
 
   setupTheme();
+  // meta загрузилась — в подвале появляется дата сборки данных.
+  applyTranslations();
   rebuildPanel();
   setupSearch();
 

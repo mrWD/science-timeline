@@ -124,6 +124,11 @@ export interface Dict {
   support: string;
   supportHint: string;
   sourceCode: string;
+  dataPrefix: string;
+  /** «сборка 2026-07-30» — когда данные последний раз пересобирались. */
+  built: (date: string) => string;
+  disclaimer: string;
+  reportIssue: string;
 
   kinds: Record<string, string>;
   categories: Record<string, string>;
@@ -175,6 +180,10 @@ const en: Dict = {
   support: 'Support',
   supportHint: 'If this is useful, you can chip in.',
   sourceCode: 'Source code',
+  dataPrefix: 'Data:',
+  built: (date) => `built ${date}`,
+  disclaimer: 'Data is gathered automatically and may be incomplete or out of date — check the primary sources.',
+  reportIssue: 'Report a problem',
   kinds: {
     discovery: 'Discoveries',
     observation: 'Observations',
@@ -248,6 +257,10 @@ const ru: Dict = {
   support: 'Поддержать',
   supportHint: 'Если лента пригодилась — можно поддержать.',
   sourceCode: 'Исходный код',
+  dataPrefix: 'Данные:',
+  built: (date) => `сборка ${date}`,
+  disclaimer: 'Данные собраны автоматически и могут содержать неточности — сверяйтесь с первоисточниками.',
+  reportIssue: 'Сообщить об ошибке',
   kinds: {
     discovery: 'Открытия',
     observation: 'Наблюдения',
@@ -318,6 +331,10 @@ const es: Dict = {
   support: 'Apoyar',
   supportHint: 'Si te resulta útil, puedes contribuir.',
   sourceCode: 'Código fuente',
+  dataPrefix: 'Datos:',
+  built: (date) => `compilación ${date}`,
+  disclaimer: 'Los datos se recopilan automáticamente y pueden ser incompletos — consulta las fuentes originales.',
+  reportIssue: 'Informar de un problema',
   kinds: {
     discovery: 'Descubrimientos',
     observation: 'Observaciones',
@@ -388,6 +405,10 @@ const fr: Dict = {
   support: 'Soutenir',
   supportHint: 'Si cela vous est utile, vous pouvez contribuer.',
   sourceCode: 'Code source',
+  dataPrefix: 'Données :',
+  built: (date) => `version ${date}`,
+  disclaimer: 'Les données sont collectées automatiquement et peuvent être incomplètes — vérifiez les sources primaires.',
+  reportIssue: 'Signaler un problème',
   kinds: {
     discovery: 'Découvertes',
     observation: 'Observations',
@@ -458,6 +479,10 @@ const de: Dict = {
   support: 'Unterstützen',
   supportHint: 'Wenn es nützlich ist, kannst du etwas beitragen.',
   sourceCode: 'Quellcode',
+  dataPrefix: 'Daten:',
+  built: (date) => `Stand ${date}`,
+  disclaimer: 'Die Daten werden automatisch gesammelt und können unvollständig sein — prüfe die Originalquellen.',
+  reportIssue: 'Problem melden',
   kinds: {
     discovery: 'Entdeckungen',
     observation: 'Beobachtungen',
@@ -528,6 +553,10 @@ const pt: Dict = {
   support: 'Apoiar',
   supportHint: 'Se for útil, podes contribuir.',
   sourceCode: 'Código-fonte',
+  dataPrefix: 'Dados:',
+  built: (date) => `compilação ${date}`,
+  disclaimer: 'Os dados são recolhidos automaticamente e podem estar incompletos — consulta as fontes originais.',
+  reportIssue: 'Comunicar um problema',
   kinds: {
     discovery: 'Descobertas',
     observation: 'Observações',
@@ -598,6 +627,10 @@ const zh: Dict = {
   support: '支持',
   supportHint: '如果觉得有用，可以支持一下。',
   sourceCode: '源代码',
+  dataPrefix: '数据：',
+  built: (date) => `构建于 ${date}`,
+  disclaimer: '数据为自动采集，可能不完整或已过时，请核对原始来源。',
+  reportIssue: '报告问题',
   kinds: {
     discovery: '发现',
     observation: '观测',
@@ -668,6 +701,10 @@ const ja: Dict = {
   support: '支援',
   supportHint: '役に立ったら支援できます。',
   sourceCode: 'ソースコード',
+  dataPrefix: 'データ：',
+  built: (date) => `ビルド ${date}`,
+  disclaimer: 'データは自動収集のため、欠落や古い情報が含まれることがあります。原典をご確認ください。',
+  reportIssue: '問題を報告',
   kinds: {
     discovery: '発見',
     observation: '観測',
@@ -750,6 +787,10 @@ const ar: Dict = {
   support: 'ادعم',
   supportHint: 'إذا كان مفيدًا، يمكنك المساهمة.',
   sourceCode: 'الشيفرة المصدرية',
+  dataPrefix: 'البيانات:',
+  built: (date) => `إصدار ${date}`,
+  disclaimer: 'تُجمع البيانات آليًا وقد تكون ناقصة أو قديمة — راجع المصادر الأصلية.',
+  reportIssue: 'الإبلاغ عن مشكلة',
   kinds: {
     discovery: 'اكتشافات',
     observation: 'أرصاد',
@@ -820,6 +861,10 @@ const hi: Dict = {
   support: 'सहयोग करें',
   supportHint: 'अगर यह उपयोगी लगे तो आप सहयोग कर सकते हैं।',
   sourceCode: 'स्रोत कोड',
+  dataPrefix: 'डेटा:',
+  built: (date) => `संस्करण ${date}`,
+  disclaimer: 'डेटा स्वतः एकत्र किया गया है और अधूरा या पुराना हो सकता है — मूल स्रोत देखें।',
+  reportIssue: 'समस्या की सूचना दें',
   kinds: {
     discovery: 'खोजें',
     observation: 'प्रेक्षण',
