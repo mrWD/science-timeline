@@ -1,133 +1,136 @@
-# Лента истории науки
+# Science History Timeline
 
-Интерактивная временная лента научных открытий, изобретений, публикаций
-и премий. Плавный зум от тысячелетий до суток, кластеризация при отдалении,
-карточка по наведению, фильтры по областям науки, десять языков интерфейса,
-светлая и тёмная темы. Данные — из Wikidata и Crossref.
+An interactive timeline of scientific discoveries, inventions, publications and
+prizes. Smooth zoom from millennia down to single days, clustering when zoomed
+out, a card on hover, filters by field of science, ten interface languages, light
+and dark themes. The data comes from Wikidata and Crossref.
 
 ```
-  −  тысячелетия  века  десятилетия  годы  месяцы  дни  +
+  −  millennia  centuries  decades  years  months  days  +
 
-          ОТКРЫТИЕ            ПОДТВЕРЖДЕНИЕ
+          DISCOVERY           CONFIRMATION
               ●                     ●
    ───────────┼─────────────────────┼──────────────
-      28 июля        29 июля           30 июля
+      July 28        July 29            July 30
 
                        ●
-                  ОПРОВЕРЖЕНИЕ
+                   REFUTATION
 ```
 
-## Устройство
+## How it is put together
 
-| Часть | Стек | Назначение |
+| Part | Stack | Purpose |
 |---|---|---|
-| `src/ScienceTimeline.Core` | .NET 10 | Ось времени и разбор дат Wikidata. Покрыта тестами |
-| `src/ScienceTimeline.Etl` | .NET 10, Npgsql | Импорт из Wikidata и Crossref, выгрузка в статику |
-| `web` | Vite, TypeScript, Canvas | Сама лента |
-| `db` | PostgreSQL 18 | Схема и справочник областей науки |
-| `src/ScienceTimeline.Api` | .NET 10, Dapper | Необязательный серверный режим, опубликованным сайтом не используется |
+| `src/ScienceTimeline.Core` | .NET 10 | The time axis and Wikidata date parsing. Covered by tests |
+| `src/ScienceTimeline.Etl` | .NET 10, Npgsql | Import from Wikidata and Crossref, export to static files |
+| `web` | Vite, TypeScript, Canvas | The timeline itself |
+| `db` | PostgreSQL 18 | Schema and the reference list of scientific fields |
+| `src/ScienceTimeline.Api` | .NET 10, Dapper | Optional server mode, not used by the published site |
 
-**Опубликованный сайт — статика.** База и .NET нужны только на этапе сборки
-данных: импорт наполняет PostgreSQL, экспорт превращает его в несколько
-JSON-файлов, и дальше браузер считает бакеты, кластеры и поиск сам.
-Нарезать данные на тайлы по масштабам смысла нет — весь набор меньше
-одной фотографии.
+**The published site is static.** The database and .NET are only needed while
+building the data: the import fills PostgreSQL, the export turns it into a few
+JSON files, and from there the browser computes buckets, clusters and search on
+its own. Slicing the data into tiles per zoom level makes no sense — the whole
+set is smaller than a single photo.
 
-`ScienceTimeline.Api` остался в репозитории как рабочая альтернатива для тех,
-кому нужен сервер с базой, но GitHub Pages его не запускает и деплой без него
-обходится.
+`ScienceTimeline.Api` remains in the repository as a working alternative for
+anyone who needs a server with a database, but GitHub Pages does not run it and
+deployment gets by without it.
 
-## Пять решений, на которых всё держится
+## Five decisions everything rests on
 
-### 1. Время — это число, а не дата
+### 1. Time is a number, not a date
 
-Ось хранится как знаковый `bigint` — целые сутки от 1970-01-01. Не `date`.
+The axis is stored as a signed `bigint` — whole days since 1970-01-01. Not
+`date`.
 
-Это даёт сразу три вещи, которых с календарным типом не получить:
+That buys three things a calendar type cannot give you:
 
-- даты до нашей эры работают без спецслучаев;
-- неточная датировка — это просто широкий полуинтервал `[t_start, t_end)`,
-  а не выдуманное 1 января. Событие «около 300 г. до н. э.» занимает век,
-  и на ленте это видно;
-- зум на любом масштабе — обычный range-скан по btree-индексу.
+- BC dates work without special cases;
+- imprecise dating is simply a wide half-open interval `[t_start, t_end)` rather
+  than an invented January 1st. An event "around 300 BC" occupies a century, and
+  the timeline shows that;
+- zooming at any scale is an ordinary range scan over a btree index.
 
-Внутри всё считается через номер юлианского дня, поэтому юлианская
-и григорианская даты ложатся на одну ось без отдельного шага конвертации:
-достаточно разобрать каждую формулой своего календаря.
+Internally everything is computed via the Julian day number, so Julian and
+Gregorian dates land on the same axis without a separate conversion step: it is
+enough to parse each one with its own calendar's formula.
 
-Ось продублирована в `web/src/timeAxis.ts` — числа обязаны совпадать
-с точностью до суток, иначе лента разъедется с данными.
+The axis is duplicated in `web/src/timeAxis.ts` — the numbers must match to the
+day, otherwise the timeline drifts away from the data.
 
-### 2. Разбор дат Wikidata — три ловушки
+### 2. Parsing Wikidata dates — three traps
 
-Каждая молча портит данные, поэтому `WikidataTime` покрыт тестами:
+Each one quietly corrupts the data, which is why `WikidataTime` is covered by
+tests:
 
-- **Нумерация годов.** Wikidata пишет 44 г. до н. э. как `-0044` — года 0
-  в её счёте нет. В астрономической нумерации это год −43. Разница
-  в единицу сдвигает всю античность.
-- **Календарь.** До 1582 года даты обычно приходят юлианскими
-  (`calendarModel = Q1985786`). Разбор григорианской формулой уводит
-  событие на 10–13 суток.
-- **Нулевые месяц и день.** При грубой точности приходит `+1905-00-00`.
+- **Year numbering.** Wikidata writes 44 BC as `-0044` — its counting has no year
+  zero. In astronomical numbering that is the year −43. An off-by-one shifts all
+  of antiquity.
+- **Calendar.** Before 1582 dates usually arrive as Julian
+  (`calendarModel = Q1985786`). Parsing them with the Gregorian formula moves an
+  event by 10–13 days.
+- **Zero month and day.** At coarse precision you get `+1905-00-00`.
 
-Век и тысячелетие считаются по историческому счёту, где нулевого года нет:
-XX век — это 1901–2000, а I век до н. э. заканчивается 1 годом н. э.
-Наивное округление вниз до сотни подписало бы 1900 год как «XX век».
+Centuries and millennia are computed using historical counting, where there is no
+year zero: the 20th century is 1901–2000, and the 1st century BC ends at AD 1.
+Naively rounding down to the hundred would label the year 1900 as "20th century".
 
-### 3. Астрономия отделена от истории науки
+### 3. Astronomy is separated from the history of science
 
-У Wikidata 34 тысячи астероидов с точной датой открытия против пары тысяч
-настоящих научных событий. Импорт «всё с P575» даёт ленту, на 95% состоящую
-из безымянных малых планет.
+Wikidata holds 34 thousand asteroids with an exact discovery date against a
+couple of thousand genuine scientific events. An "import everything with P575"
+approach yields a timeline that is 95% nameless minor planets.
 
-Поэтому астрономические объекты проходят по отдельному порогу значимости.
-Значение 45 выбрано по фактическому распределению, а не на глаз: ниже него
-астрономия давит числом (6906 объектов против 2698 всех остальных событий),
-выше — соотношение выравнивается. Плутон, комета Галлея и Церера остаются,
-«1998 QE2» — нет.
+So astronomical objects go through a separate significance threshold. The value
+45 was picked from the actual distribution rather than by eye: below it astronomy
+wins on sheer count (6,906 objects against 2,698 of all other events), above it
+the ratio evens out. Pluto, Halley's Comet and Ceres stay; "1998 QE2" does not.
 
-Значимость считается по числу языковых разделов Википедии. Это дешёвый
-и на удивление честный прокси: по нему же отбирается топ-K событий в бакете,
-когда лента отдалена и все точки не помещаются.
+Significance is measured by the number of Wikipedia language editions. That is a
+cheap and surprisingly honest proxy: the same number selects the top-K events in
+a bucket when the timeline is zoomed out and not all points fit.
 
-### 4. Свежую науку Wikidata не знает — нужен второй источник
+### 4. Wikidata does not know recent science — a second source is needed
 
-Wikidata описывает историю науки хорошо, а текущую — почти никак. Замер
-по базе: за весь 2025 год там нашлось **двенадцать** событий, за 2026-й —
-ни одного. Открытие попадает в Wikidata спустя месяцы и годы после публикации,
-поэтому лента обрывалась за годы до сегодняшнего дня, хотя открывалась
-на текущей неделе.
+Wikidata describes the history of science well and the present almost not at all.
+Measured against the database: for the whole of 2025 it had **twelve** events,
+and for 2026 none at all. A discovery reaches Wikidata months or years after
+publication, so the timeline used to trail off years before today even though it
+opened on the current week.
 
-Второй источник — Crossref. Он знает все статьи с DOI, но их миллионы в год,
-и брать всё подряд бессмысленно: получилась бы не история науки, а список
-литературы. Отбор идёт по ISSN двух десятков ведущих журналов — Nature,
-Science, Cell, PNAS, Lancet, NEJM, Physical Review Letters и другие.
-Фильтр грубый, зато честный: бесплатного признака важности только что вышедшей
-статьи не существует, цитирования появляются через годы.
+The second source is Crossref. It knows every paper with a DOI, but there are
+millions per year and taking them all is pointless: the result would be a
+bibliography, not a history of science. Selection goes by the ISSNs of a couple
+of dozen leading journals — Nature, Science, Cell, PNAS, The Lancet, NEJM,
+Physical Review Letters and others. The filter is crude but honest: there is no
+free signal of importance for a paper that has just come out, and citations
+appear years later.
 
-Выборка обязательно сортируется по дате убыванием. Эти журналы дают около
-двух тысяч статей в месяц, предел выборки срабатывает почти всегда, и без
-сортировки он обрезал бы выдачу в произвольном месте — выкинув ровно то,
-ради чего второй источник и заводился.
+The query is always sorted by date descending. Those journals produce about two
+thousand papers a month, the result limit is hit almost every time, and without
+sorting it would cut the output at an arbitrary point — throwing away exactly
+what the second source was added for.
 
-### 5. Подписи дат собираются на клиенте, а не хранятся в базе
+### 5. Date labels are assembled on the client, not stored in the database
 
-Языков десять. Держать `date_display_ru`, `date_display_en` и ещё восемь
-колонок значило бы переимпортировать все данные ради одиннадцатого языка.
+There are ten languages. Keeping `date_display_ru`, `date_display_en` and eight
+more columns would mean reimporting all the data just to add an eleventh
+language.
 
-Поэтому в базе лежит только интервал, точность и признак «около»,
-а подпись собирает `Intl.DateTimeFormat` в браузере — он знает названия
-месяцев и обозначения эр для всех локалей, включая годы до нашей эры.
-Десятилетия, века и тысячелетия Intl не умеет, и они собираются функциями:
-русский ставит римскую цифру перед словом, немецкий — арабскую с точкой,
-китайский и японский пишут эру префиксом.
+So the database holds only the interval, the precision and an "approximate" flag,
+while the label is assembled by `Intl.DateTimeFormat` in the browser — it knows
+month names and era markers for every locale, including BC years. Intl cannot
+handle decades, centuries and millennia, so those are assembled by functions:
+Russian puts a Roman numeral before the word, German an Arabic one followed by a
+period, and Chinese and Japanese write the era as a prefix.
 
-Названия и описания событий по той же причине вынесены из `events`
-в таблицу `event_translations`.
+Event titles and descriptions are moved out of `events` into an
+`event_translations` table for the same reason.
 
-## Запуск
+## Running locally
 
-Нужны .NET 10 SDK, PostgreSQL 18 и Node.
+You need the .NET 10 SDK, PostgreSQL 18 and Node.
 
 ```bash
 psql -U postgres -c "create database science_timeline encoding 'UTF8'"
@@ -137,19 +140,20 @@ psql -U postgres -c "create database science_timeline encoding 'UTF8'"
 psql -U postgres -d science_timeline -f db/schema.sql -f db/seed_categories.sql
 ```
 
-Если база создавалась до появления переводов, вместо этого применить миграцию:
+If the database was created before translations were added, apply the migration
+instead:
 
 ```bash
 psql -U postgres -d science_timeline -f db/migrate_001_translations.sql
 ```
 
-Импорт (около 10 минут — WDQS ограничивает частоту запросов):
+Import (about 10 minutes — WDQS rate-limits requests):
 
 ```bash
 dotnet run --project src/ScienceTimeline.Etl -c Release -- --fresh
 ```
 
-Выгрузка базы в статические файлы, которые читает сайт:
+Export the database to the static files the site reads:
 
 ```bash
 dotnet run --project src/ScienceTimeline.Etl -c Release -- --export web/public/data
@@ -159,105 +163,104 @@ dotnet run --project src/ScienceTimeline.Etl -c Release -- --export web/public/d
 npm --prefix web run dev
 ```
 
-Открыть http://localhost:5173
+Open http://localhost:5173
 
-Строка подключения берётся из переменной `SCIENCE_TIMELINE_DB`,
-по умолчанию — локальный PostgreSQL с пользователем `postgres`.
+The connection string is taken from the `SCIENCE_TIMELINE_DB` variable, defaulting
+to a local PostgreSQL with the `postgres` user.
 
-### Формат выгрузки
+### Export format
 
-| Файл | Что внутри |
+| File | What is inside |
 |---|---|
-| `meta.json` | границы времени, справочник областей, типы событий, языки |
-| `core.json` | числовое ядро всех событий колонками, общее для всех языков |
-| `text-<lang>.json` | названия и описания, выровненные по порядку ядра |
+| `meta.json` | time bounds, the list of fields, event kinds, languages |
+| `core.json` | the numeric core of all events as columns, shared by all languages |
+| `text-<lang>.json` | titles and descriptions, aligned with the core's ordering |
 
-Колонки, а не массив объектов: тысячи повторов ключа `significance` сжимаются
-плохо, а столбец однотипных чисел — очень хорошо. Тексты отделены от ядра,
-чтобы смена языка догружала только текстовый файл. Области науки лежат
-битовой маской: категорий одиннадцать, они помещаются в одно целое,
-и фильтр на клиенте становится побитовым И.
+Columns rather than an array of objects: thousands of repeats of the
+`significance` key compress badly, while a column of uniform numbers compresses
+very well. Text is split from the core so that switching languages only fetches
+the text file. Fields of science are stored as a bit mask: there are eleven
+categories, they fit into a single integer, and the client-side filter becomes a
+bitwise AND.
 
-### Ключи импорта
+### Import options
 
-| Ключ | Смысл | По умолчанию |
+| Option | Meaning | Default |
 |---|---|---|
-| `--min-sitelinks N` | порог значимости | 5 |
-| `--astro-min N` | отдельный порог для астрономии | 45 |
-| `--limit N` | оставить N самых значимых событий | без ограничения |
-| `--fresh` | очистить события перед импортом | нет |
-| `--no-nobel` | пропустить нобелевские премии | нет |
-| `--no-crossref` | пропустить свежие публикации | нет |
-| `--crossref-since D` | с какой даты тянуть публикации | год назад |
-| `--crossref-limit N` | предел числа публикаций | 20000 |
+| `--min-sitelinks N` | significance threshold | 5 |
+| `--astro-min N` | separate threshold for astronomy | 45 |
+| `--limit N` | keep the N most significant events | no limit |
+| `--fresh` | clear events before importing | no |
+| `--no-nobel` | skip Nobel prizes | no |
+| `--no-crossref` | skip recent publications | no |
+| `--crossref-since D` | the date to pull publications from | one year ago |
+| `--crossref-limit N` | cap on the number of publications | 20000 |
 
-## Что считается в браузере
+## What is computed in the browser
 
-Всё, что раньше делал SQL: отбор диапазона (двоичный поиск по отсортированному
-`tMid`), разбиение на бакеты, счётчики по типам, топ-K по значимости и поиск.
-На двадцати пяти тысячах событий это доли миллисекунды.
+Everything SQL used to do: range selection (binary search over the sorted
+`tMid`), bucketing, per-kind counters, top-K by significance, and search. On
+twenty-five thousand events that takes fractions of a millisecond.
 
-Единственная потеря по сравнению с серверным вариантом — морфология поиска.
-PostgreSQL знал, что «квантовая» и «квантовый» одно и то же; поиск по подстроке
-этого не знает. Взамен он мгновенный и работает без сети.
+The only loss compared with the server version is search morphology. PostgreSQL
+knew that «квантовая» and «квантовый» are the same word; substring search does
+not. In exchange it is instant and works offline.
 
-## Что было сервером
+## What used to be the server
 
-`ScienceTimeline.Api` реализует то же самое на PostgreSQL — бакетинг одним
-запросом с оконной функцией по индексу `events (t_mid) include (significance, kind)`
-и полнотекстовый поиск с морфологией восьми языков. Опубликованному сайту
-он не нужен, но остаётся рабочим, если понадобится вариант с сервером.
+`ScienceTimeline.Api` implements the same thing on PostgreSQL — bucketing in a
+single query with a window function over the
+`events (t_mid) include (significance, kind)` index, and full-text search with
+morphology for eight languages. The published site does not need it, but it stays
+functional in case a server-backed variant is ever wanted.
 
-## Тесты
+## Tests
 
 ```bash
 dotnet test
 ```
 
-44 теста на ось времени и разбор дат. Эталонные значения сверены
-с самим PostgreSQL (`select tl_day(...)`), чтобы ось в C# и ось в БД
-гарантированно совпадали.
+44 tests for the time axis and date parsing. The expected values were checked
+against PostgreSQL itself (`select tl_day(...)`) so that the C# axis and the
+database axis are guaranteed to agree.
 
-## Развёртывание
+## Deployment
 
-Бесплатный вариант: фронтенд на Vercel или Cloudflare Pages, бэкенд
-контейнером на Google Cloud Run (always-free, scale-to-zero), база —
-Neon (0,5 ГБ, без паузы по неактивности).
+The free option: frontend on Vercel or Cloudflare Pages, backend as a container
+on Google Cloud Run (always-free, scale-to-zero), database on Neon (0.5 GB, no
+idle suspension).
 
-.NET на Vercel не запускается: там нет соответствующего рантайма,
-только Node, Python, Go и Ruby.
+.NET does not run on Vercel: there is no such runtime there, only Node, Python,
+Go and Ruby.
 
-Лимит в 0,5 ГБ — проектное ограничение, а не мелочь. В базе лежат только
-заголовок, короткое описание, даты, категория, значимость и ссылки;
-изображения и полные тексты подтягиваются из Wikipedia по требованию.
+The 0.5 GB limit is a design constraint, not a detail. The database holds only
+the title, a short description, dates, category, significance and links; images
+and full texts are pulled from Wikipedia on demand.
 
-## Языки
+## Languages
 
-Интерфейс и данные: английский, китайский, хинди, испанский, арабский,
-французский, португальский, русский, немецкий, японский. Отбирались
-по числу говорящих с поправкой на представленность в Wikidata: у бенгальского
-и урду носителей больше, чем у немецкого, но меток на них в разы меньше
-и лента вышла бы пустой.
+Interface and data: English, Chinese, Hindi, Spanish, Arabic, French, Portuguese,
+Russian, German, Japanese. They were picked by number of speakers, adjusted for
+representation in Wikidata: Bengali and Urdu have more speakers than German, but
+several times fewer labels, and the timeline would come out empty.
 
-Арабский разворачивает интерфейс справа налево; сама лента остаётся
-слева направо, потому что время в ней течёт в одну сторону независимо
-от письменности.
+Arabic flips the interface right-to-left; the timeline itself stays
+left-to-right, because time in it flows one way regardless of the writing system.
 
-Полнотекстовый поиск работает по морфологии восьми из десяти языков —
-для китайского и японского PostgreSQL 18 словарей не имеет, там поиск
-идёт по точным словоформам. Запрос всегда ищет и на языке интерфейса,
-и на английском.
+Full-text search uses morphology for eight of the ten languages — PostgreSQL 18
+has no dictionaries for Chinese and Japanese, so search there matches exact word
+forms. A query always searches both in the interface language and in English.
 
-## Что дальше
+## What is next
 
-- `event_dates` и `event_links` в схеме есть, но импорт их пока не заполняет:
-  нужна цепочка «эксперимент → публикация → подтверждение → премия»
-  и граф «что к чему привело»
-- опровержения (`refutation`) в Wikidata почти не размечены — нужен
-  отдельный источник
-- у публикаций Crossref есть только английское название: переводить
-  заголовки статей нечем, API отдаёт их с запасным вариантом
-- имена учёных хранятся только на русском и английском, хотя импорт
-  забирает их на всех десяти
-- Native AOT для быстрого холодного старта: потребует заменить Dapper
-  на Dapper.AOT либо голый Npgsql
+- `event_dates` and `event_links` exist in the schema, but the import does not
+  populate them yet: this needs the "experiment → publication → confirmation →
+  prize" chain and a "what led to what" graph
+- refutations (`refutation`) are barely annotated in Wikidata — a separate source
+  is needed
+- Crossref publications only have an English title: there is nothing to translate
+  paper titles with, and the API returns them with a fallback
+- scientists' names are stored only in Russian and English, even though the
+  import fetches them in all ten languages
+- Native AOT for a fast cold start: would require replacing Dapper with
+  Dapper.AOT or bare Npgsql
