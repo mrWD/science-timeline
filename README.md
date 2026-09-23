@@ -5,6 +5,12 @@ prizes. Smooth zoom from millennia down to single days, clustering when zoomed
 out, a card on hover, filters by field of science, ten interface languages, light
 and dark themes. The data comes from Wikidata and Crossref.
 
+**Try it:** [mrwd.github.io/science-timeline](https://mrwd.github.io/science-timeline/)
+(static site on GitHub Pages, data refreshed weekly) ·
+[project page](https://mrwd.github.io/products/science-timeline/)
+
+![The whole timeline zoomed out to millennia, light theme, with clusters and a hover card](docs/readme/science-timeline.png)
+
 ```
   −  millennia  centuries  decades  years  months  days  +
 
@@ -226,16 +232,23 @@ database axis are guaranteed to agree.
 
 ## Deployment
 
-The free option: frontend on Vercel or Cloudflare Pages, backend as a container
-on Google Cloud Run (always-free, scale-to-zero), database on Neon (0.5 GB, no
-idle suspension).
+The site is static and lives on GitHub Pages. Two workflows do all the work:
 
-.NET does not run on Vercel: there is no such runtime there, only Node, Python,
-Go and Ruby.
+- `deploy.yml` runs on every push to `main`: `npm run build` in `web`, then
+  `actions/deploy-pages` publishes `web/dist`.
+- `refresh-data.yml` runs every Monday. It starts PostgreSQL 18 as a service
+  container, applies the schema, runs the import against Wikidata and Crossref,
+  exports `web/public/data`, runs the tests and commits the result if the events
+  changed. That commit triggers the deploy.
 
-The 0.5 GB limit is a design constraint, not a detail. The database holds only
-the title, a short description, dates, category, significance and links; images
-and full texts are pulled from Wikipedia on demand.
+No server, no database and no .NET runtime are involved at request time. The
+data files are kept in the repository on purpose: the browser needs them as
+plain static assets, and a weekly diff is a small price for a site with no
+backend.
+
+The database stays small by design. It holds only the title, a short
+description, dates, category, significance and links; images and full texts are
+pulled from Wikipedia on demand.
 
 ## Languages
 
@@ -251,7 +264,7 @@ Full-text search uses morphology for eight of the ten languages — PostgreSQL 1
 has no dictionaries for Chinese and Japanese, so search there matches exact word
 forms. A query always searches both in the interface language and in English.
 
-## What is next
+## Roadmap
 
 - `event_dates` and `event_links` exist in the schema, but the import does not
   populate them yet: this needs the "experiment → publication → confirmation →
