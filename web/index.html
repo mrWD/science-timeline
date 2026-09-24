@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Лента истории науки</title>
+    <!-- Hides the donation links for visitors who came from one of the author's apps
+         (App Store guideline 3.1.1). Shared with the rest of mrwd.github.io, same origin,
+         same twelve-hour mark; a full URL so Vite leaves it alone. -->
+    <script src="https://mrwd.github.io/from-app.js"></script>
   </head>
   <body>
     <div id="app">
@@ -108,11 +112,14 @@
           Данные собраны автоматически и могут содержать неточности — сверяйтесь с первоисточниками.
         </p>
         <p>
-          <span data-i18n="support">Поддержать</span>:
-          <a href="https://buymeacoffee.com/ipupok" target="_blank" rel="noopener">☕&nbsp;Buy&nbsp;Me&nbsp;a&nbsp;Coffee</a>
-          · <a href="https://ko-fi.com/ipupok" target="_blank" rel="noopener">Ko-fi</a>
-          · <a href="https://www.paypal.com/donate/?hosted_button_id=VBNDB5AHYLGCY" target="_blank" rel="noopener">PayPal</a>
-          · <a href="https://github.com/mrWD/science-timeline" target="_blank" rel="noopener" data-i18n="sourceCode">Исходный код</a>
+          <span data-donation>
+            <span data-i18n="support">Поддержать</span>:
+            <a href="https://buymeacoffee.com/ipupok" target="_blank" rel="noopener">☕&nbsp;Buy&nbsp;Me&nbsp;a&nbsp;Coffee</a>
+            · <a href="https://ko-fi.com/ipupok" target="_blank" rel="noopener">Ko-fi</a>
+            · <a href="https://www.paypal.com/donate/?hosted_button_id=VBNDB5AHYLGCY" target="_blank" rel="noopener">PayPal</a>
+            ·
+          </span>
+          <a href="https://github.com/mrWD/science-timeline" target="_blank" rel="noopener" data-i18n="sourceCode">Исходный код</a>
           · <a href="https://github.com/mrWD/science-timeline/issues" target="_blank" rel="noopener" data-i18n="reportIssue">Сообщить об ошибке</a>
         </p>
       </footer>

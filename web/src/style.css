@@ -608,3 +608,8 @@ body {
   justify-content: space-between;
 }
 
+/* Visitors from one of the author's apps see no donation links: mrwd.github.io/from-app.js
+   puts `from-app` on <html> for twelve hours after a visit marked ?from=app. */
+.from-app [data-donation] {
+  display: none !important;
+}
