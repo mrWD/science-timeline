@@ -105,18 +105,19 @@ public sealed partial class CrossrefSource : IDisposable
         string cursor = "*";
         int page = 0;
 
-        while (events.Count < maxItems)
+        // Crossref больше не сортирует по дате публикации вместе с курсором: с осени 2026
+        // такой запрос получает 400 "sort-criteria-incompatible-with-cursor", и пять
+        // еженедельных обновлений подряд вышли без единой свежей статьи. Поэтому окно
+        // `since` выбирается целиком (год этих журналов — около 24 тысяч статей, 24 страницы),
+        // а самые новые maxItems отбираются ниже, уже у нас. Предохранитель — втрое больше
+        // предела, на случай если окно когда-нибудь окажется несоразмерно большим.
+        while (events.Count < maxItems * 3)
         {
             var filters = new List<string> { "type:journal-article", $"from-pub-date:{since:yyyy-MM-dd}" };
             filters.AddRange(Journals.Select(j => $"issn:{j.Issn}"));
 
-            // Сортировка по дате убыванием обязательна. Эти журналы дают около
-            // двух тысяч статей в месяц, и предел выборки почти всегда срабатывает;
-            // без сортировки он обрезал бы выдачу в произвольном месте и выкинул
-            // ровно то, ради чего всё затевалось, — последние недели.
             string url = $"{Endpoint}?filter={string.Join(",", filters)}"
                        + $"&rows=1000&cursor={Uri.EscapeDataString(cursor)}"
-                       + "&sort=published&order=desc"
                        + "&select=DOI,title,published,issued,container-title,is-referenced-by-count,subject,author";
 
             var message = await GetAsync(url, ct);
@@ -134,6 +135,10 @@ public sealed partial class CrossrefSource : IDisposable
             if (message.Items.Count == 0 || string.IsNullOrEmpty(message.NextCursor)) break;
             cursor = message.NextCursor;
         }
+
+        // Предел выборки должен срезать самое старое, а не что попало: лента ради последних недель.
+        if (events.Count > maxItems)
+            events = events.OrderByDescending(e => e.TStart).Take(maxItems).ToList();
 
         return events;
     }
@@ -154,7 +159,9 @@ public sealed partial class CrossrefSource : IDisposable
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Console.Error.WriteLine($"  Crossref вернул {(int)response.StatusCode}");
+                    // Тело ответа — то, что Crossref пишет о причине; без него 400 молчал месяц.
+                    string reason = await response.Content.ReadAsStringAsync(ct);
+                    Console.Error.WriteLine($"  Crossref вернул {(int)response.StatusCode}: {reason[..Math.Min(reason.Length, 300)]}");
                     if (attempt == 4) return null;
                     await Task.Delay(TimeSpan.FromSeconds(attempt * 5), ct);
                     continue;
